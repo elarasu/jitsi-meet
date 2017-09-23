@@ -1,3 +1,5 @@
+/* @flow */
+
 import _ from 'lodash';
 
 /**
@@ -13,7 +15,7 @@ import _ from 'lodash';
  * from the specified target by setting the specified properties to the
  * specified values.
  */
-export function assign(target, source) {
+export function assign(target: Object, source: Object) {
     let t = target;
 
     for (const property in source) { // eslint-disable-line guard-for-in
@@ -32,7 +34,7 @@ export function assign(target, source) {
  * @returns {boolean} True if {@code a} equals {@code b} (according to deep
  * comparison); false, otherwise.
  */
-export function equals(a, b) {
+export function equals(a: any, b: any) {
     return _.isEqual(a, b);
 }
 
@@ -52,7 +54,7 @@ export function equals(a, b) {
  * constructed from the specified <tt>state</tt> by setting the specified
  * <tt>property</tt> to the specified <tt>value</tt>.
  */
-export function set(state, property, value) {
+export function set(state: Object, property: string, value: any) {
     return _set(state, property, value, /* copyOnWrite */ true);
 }
 
@@ -77,7 +79,11 @@ export function set(state, property, value) {
  * <tt>state</tt> by setting the specified <tt>property</tt> to the specified
  * <tt>value</tt>.
  */
-function _set(state, property, value, copyOnWrite) {
+function _set(
+        state: Object,
+        property: string,
+        value: any,
+        copyOnWrite: boolean) {
     // Delete state properties that are to be set to undefined. (It is a matter
     // of personal preference, mostly.)
     if (typeof value === 'undefined'
@@ -104,3 +110,30 @@ function _set(state, property, value, copyOnWrite) {
 }
 
 /* eslint-enable max-params */
+
+/**
+ * Returns redux state from the specified <tt>stateful</tt> which is presumed to
+ * be related to the redux state (e.g. the redux store, the redux
+ * <tt>getState</tt> function).
+ *
+ * @param {Function|Object} stateful - The entity such as the redux store or the
+ * redux <tt>getState</tt> function from which the redux state is to be
+ * returned.
+ * @returns {Object} The redux state.
+ */
+export function toState(stateful: Function | Object) {
+    if (stateful) {
+        if (typeof stateful === 'function') {
+            return stateful();
+        }
+
+        const { getState } = stateful;
+
+        if (typeof getState === 'function'
+                && typeof stateful.dispatch === 'function') {
+            return getState();
+        }
+    }
+
+    return stateful;
+}

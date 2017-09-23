@@ -19,7 +19,9 @@ export default class AbstractVideoTrack extends Component {
      */
     static propTypes = {
         dispatch: React.PropTypes.func,
+
         videoTrack: React.PropTypes.object,
+
         waitForVideoStarted: React.PropTypes.bool,
 
         /**
@@ -117,7 +119,8 @@ export default class AbstractVideoTrack extends Component {
     _onVideoPlaying() {
         const videoTrack = this.props.videoTrack;
 
-        if (videoTrack && !videoTrack.videoStarted) {
+        if (videoTrack
+            && !videoTrack.videoStarted) {
             this.props.dispatch(trackVideoStarted(videoTrack.jitsiTrack));
         }
     }

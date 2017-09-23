@@ -8,17 +8,12 @@ import { Watermarks } from '../../base/react';
 
 import { AbstractWelcomePage, _mapStateToProps } from './AbstractWelcomePage';
 
-/* eslint-disable require-jsdoc */
-
 /**
  * The Web container rendering the welcome page.
  *
  * @extends AbstractWelcomePage
  */
 class WelcomePage extends AbstractWelcomePage {
-
-/* eslint-enable require-jsdoc */
-
     /**
      * Initializes a new WelcomePage instance.
      *
@@ -43,7 +38,8 @@ class WelcomePage extends AbstractWelcomePage {
     }
 
     /**
-     * This method is executed when comonent is mounted.
+     * Implements React's {@link Component#componentDidMount()}. Invoked
+     * immediately after this component is mounted.
      *
      * @inheritdoc
      * @returns {void}

@@ -1,5 +1,7 @@
 /* @flow */
 
+import { toState } from '../redux';
+
 /**
  * Retrieves a simplified version of the conference/location URL stripped of URL
  * params (i.e. query/search and hash) which should be used for sending invites.
@@ -9,18 +11,13 @@
  * @returns {string|undefined}
  */
 export function getInviteURL(stateOrGetState: Function | Object): ?string {
-    const state
-        = typeof stateOrGetState === 'function'
-            ? stateOrGetState()
-            : stateOrGetState;
-    const { locationURL } = state['features/base/connection'];
-    let inviteURL;
+    const state = toState(stateOrGetState);
+    const locationURL
+        = state instanceof URL
+            ? state
+            : state['features/base/connection'].locationURL;
 
-    if (locationURL) {
-        inviteURL = getURLWithoutParams(locationURL).href;
-    }
-
-    return inviteURL;
+    return locationURL ? getURLWithoutParams(locationURL).href : undefined;
 }
 
 /**
@@ -35,11 +32,35 @@ export function getURLWithoutParams(url: URL): URL {
     const { hash, search } = url;
 
     if ((hash && hash.length > 1) || (search && search.length > 1)) {
-        // eslint-disable-next-line no-param-reassign
-        url = new URL(url.href);
+        url = new URL(url.href); // eslint-disable-line no-param-reassign
         url.hash = '';
         url.search = '';
+
+        // XXX The implementation of URL at least on React Native appends ? and
+        // # at the end of the href which is not desired.
+        let { href } = url;
+
+        if (href) {
+            href.endsWith('#') && (href = href.substring(0, href.length - 1));
+            href.endsWith('?') && (href = href.substring(0, href.length - 1));
+
+            // eslint-disable-next-line no-param-reassign
+            url.href === href || (url = new URL(href));
+        }
     }
 
     return url;
+}
+
+/**
+ * Converts a specific id to jid if it's not jid yet.
+ *
+ * @param {string} id - User id or jid.
+ * @param {Object} configHosts - The <tt>hosts</tt> part of the <tt>config</tt>
+ * object.
+ * @returns {string} A string in the form of a JID (i.e.
+ * <tt>user@server.com</tt>).
+ */
+export function toJid(id: string, { authdomain, domain }: Object): string {
+    return id.indexOf('@') >= 0 ? id : `${id}@${authdomain || domain}`;
 }

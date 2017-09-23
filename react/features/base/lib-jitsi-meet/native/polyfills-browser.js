@@ -2,6 +2,10 @@ import Iterator from 'es6-iterator';
 import BackgroundTimer from 'react-native-background-timer';
 import 'url-polyfill'; // Polyfill for URL constructor
 
+import { Platform } from '../../react';
+
+import Storage from './Storage';
+
 /**
  * Gets the first common prototype of two specified Objects (treating the
  * objects themselves as prototypes as well).
@@ -20,10 +24,9 @@ function _getCommonPrototype(a, b) {
 
     let p;
 
-    if ((p = Object.getPrototypeOf(a)) && (p = _getCommonPrototype(b, p))) {
-        return p;
-    }
-    if ((p = Object.getPrototypeOf(b)) && (p = _getCommonPrototype(a, p))) {
+    if (((p = Object.getPrototypeOf(a)) && (p = _getCommonPrototype(b, p)))
+            || ((p = Object.getPrototypeOf(b))
+                && (p = _getCommonPrototype(a, p)))) {
         return p;
     }
 
@@ -88,7 +91,7 @@ function _visitNode(node, callback) {
 }
 
 (global => {
-    const DOMParser = require('xmldom').DOMParser;
+    const { DOMParser } = require('xmldom');
 
     // addEventListener
     //
@@ -130,6 +133,14 @@ function _visitNode(node, callback) {
         if (typeof document.addEventListener === 'undefined') {
             // eslint-disable-next-line no-empty-function
             document.addEventListener = () => {};
+        }
+
+        // document.cookie
+        //
+        // Required by:
+        // - herment
+        if (typeof document.cookie === 'undefined') {
+            document.cookie = '';
         }
 
         // Document.querySelector
@@ -211,7 +222,7 @@ function _visitNode(node, callback) {
                 // then it doesn't sound like what expected.
                 && nodePrototype !== Object.getPrototypeOf({})) {
             // Override console.log.
-            const console = global.console;
+            const { console } = global;
 
             if (console) {
                 const loggerLevels = require('jitsi-meet-logger').levels;
@@ -224,7 +235,7 @@ function _visitNode(node, callback) {
 
                     if (typeof consoleLog === 'function') {
                         console[level] = function(...args) {
-                            const length = args.length;
+                            const { length } = args;
 
                             for (let i = 0; i < length; ++i) {
                                 let arg = args[i];
@@ -256,14 +267,23 @@ function _visitNode(node, callback) {
         global.document = document;
     }
 
+    // localStorage
+    if (typeof global.localStorage === 'undefined') {
+        global.localStorage = new Storage('@jitsi-meet/');
+    }
+
     // location
     if (typeof global.location === 'undefined') {
         global.location = {
-            href: ''
+            href: '',
+
+            // Required by:
+            // - lib-jitsi-meet/modules/xmpp/xmpp.js
+            search: ''
         };
     }
 
-    const navigator = global.navigator;
+    const { navigator } = global;
 
     if (navigator) {
         // platform
@@ -287,58 +307,43 @@ function _visitNode(node, callback) {
         // Required by:
         // - lib-jitsi-meet/modules/RTC/adapter.screenshare.js
         // - lib-jitsi-meet/modules/RTC/RTCBrowserType.js
-        (() => {
-            const reactNativePackageJSON = require('react-native/package.json');
-            let userAgent = reactNativePackageJSON.name || 'react-native';
+        let userAgent = navigator.userAgent || '';
 
-            const version = reactNativePackageJSON.version;
+        // react-native/version
+        const { name, version } = require('react-native/package.json');
+        let rn = name || 'react-native';
 
-            if (version) {
-                userAgent += `/${version}`;
-            }
+        version && (rn += `/${version}`);
+        if (userAgent.indexOf(rn) === -1) {
+            userAgent = userAgent ? `${rn} ${userAgent}` : rn;
+        }
 
-            if (typeof navigator.userAgent !== 'undefined') {
-                const s = navigator.userAgent.toString();
+        // (OS version)
+        const os = `(${Platform.OS} ${Platform.Version})`;
 
-                if (s.length > 0 && s.indexOf(userAgent) === -1) {
-                    userAgent = `${s} ${userAgent}`;
-                }
-            }
+        if (userAgent.indexOf(os) === -1) {
+            userAgent = userAgent ? `${userAgent} ${os}` : os;
+        }
 
-            navigator.userAgent = userAgent;
-        })();
-    }
-
-    // performance
-    if (typeof global.performance === 'undefined') {
-        global.performance = {
-            now() {
-                return 0;
-            }
-        };
+        navigator.userAgent = userAgent;
     }
 
     // sessionStorage
     //
     // Required by:
+    // - herment
     // - Strophe
     if (typeof global.sessionStorage === 'undefined') {
-        global.sessionStorage = {
-            /* eslint-disable no-empty-function */
-            getItem() {},
-            removeItem() {},
-            setItem() {}
-
-            /* eslint-enable no-empty-function */
-        };
+        global.sessionStorage = new Storage();
     }
 
     // WebRTC
     require('./polyfills-webrtc');
+    require('react-native-callstats/csio-polyfill');
 
     // XMLHttpRequest
     if (global.XMLHttpRequest) {
-        const prototype = global.XMLHttpRequest.prototype;
+        const { prototype } = global.XMLHttpRequest;
 
         // XMLHttpRequest.responseXML
         //
@@ -347,17 +352,13 @@ function _visitNode(node, callback) {
         if (prototype && !prototype.hasOwnProperty('responseXML')) {
             Object.defineProperty(prototype, 'responseXML', {
                 get() {
-                    const responseText = this.responseText;
-                    let responseXML;
+                    const { responseText } = this;
 
-                    if (responseText) {
-                        responseXML
-                            = new DOMParser().parseFromString(
+                    return (
+                        responseText
+                            && new DOMParser().parseFromString(
                                 responseText,
-                                'text/xml');
-                    }
-
-                    return responseXML;
+                                'text/xml'));
                 }
             });
         }
@@ -372,9 +373,9 @@ function _visitNode(node, callback) {
     // Required by:
     // - lib-jitsi-meet
     // - Strophe
-    global.clearTimeout = window.clearTimeout = BackgroundTimer.clearTimeout;
-    global.clearInterval = window.clearInterval = BackgroundTimer.clearInterval;
-    global.setInterval = window.setInterval = BackgroundTimer.setInterval;
-    global.setTimeout = window.setTimeout = BackgroundTimer.setTimeout;
+    global.clearTimeout = BackgroundTimer.clearTimeout.bind(BackgroundTimer);
+    global.clearInterval = BackgroundTimer.clearInterval.bind(BackgroundTimer);
+    global.setInterval = BackgroundTimer.setInterval.bind(BackgroundTimer);
+    global.setTimeout = BackgroundTimer.setTimeout.bind(BackgroundTimer);
 
 })(global || window || this); // eslint-disable-line no-invalid-this

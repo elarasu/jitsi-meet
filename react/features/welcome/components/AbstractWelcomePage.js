@@ -1,11 +1,10 @@
-import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
 
 import { appNavigate } from '../../app';
 import { isRoomValid } from '../../base/conference';
-import { VideoTrack } from '../../base/media';
-import { getLocalVideoTrack } from '../../base/tracks';
 
-import { generateRoomWithoutSeparator } from '../roomnameGenerator';
+import { generateRoomWithoutSeparator } from '../functions';
 
 /**
  * Base (abstract) class for container component rendering the welcome page.
@@ -14,21 +13,20 @@ import { generateRoomWithoutSeparator } from '../roomnameGenerator';
  */
 export class AbstractWelcomePage extends Component {
     /**
-     * AbstractWelcomePage component's property types.
+     * {@code AbstractWelcomePage}'s React {@code Component} prop types.
      *
      * @static
      */
     static propTypes = {
-        _localVideoTrack: React.PropTypes.object,
-        _room: React.PropTypes.string,
-        dispatch: React.PropTypes.func
+        _room: PropTypes.string,
+        dispatch: PropTypes.func
     };
 
     /**
-     * Initializes a new AbstractWelcomePage instance, including the initial
-     * state of the room name input.
+     * Initializes a new {@code AbstractWelcomePage} instance.
      *
-     * @param {Object} props - Component properties.
+     * @param {Object} props - The React {@code Component} props to initialize
+     * the new {@code AbstractWelcomePage} instance with.
      */
     constructor(props) {
         super(props);
@@ -37,25 +35,26 @@ export class AbstractWelcomePage extends Component {
          * Save room name into component's local state.
          *
          * @type {Object}
-         * @property {number|null} animateTimeoutId - Identificator for
-         * letter animation timeout.
+         * @property {number|null} animateTimeoutId - Identifier of the letter
+         * animation timeout.
          * @property {string} generatedRoomname - Automatically generated
          * room name.
          * @property {string} room - Room name.
          * @property {string} roomPlaceholder - Room placeholder
          * that's used as a placeholder for input.
-         * @property {nubmer|null} updateTimeoutId - Identificator for
-         * updating generated room name.
+         * @property {nubmer|null} updateTimeoutId - Identifier of the timeout
+         * updating the generated room name.
          */
         this.state = {
             animateTimeoutId: null,
             generatedRoomname: '',
+            joining: false,
             room: '',
             roomPlaceholder: '',
             updateTimeoutId: null
         };
 
-        // Bind event handlers so they are only bound once for every instance.
+        // Bind event handlers so they are only bound once per instance.
         this._animateRoomnameChanging
             = this._animateRoomnameChanging.bind(this);
         this._onJoin = this._onJoin.bind(this);
@@ -64,7 +63,18 @@ export class AbstractWelcomePage extends Component {
     }
 
     /**
-     * This method is executed when component receives new properties.
+     * Implements React's {@link Component#componentWillMount()}. Invoked
+     * immediately before mounting occurs.
+     *
+     * @inheritdoc
+     */
+    componentWillMount() {
+        this._mounted = true;
+    }
+
+    /**
+     * Implements React's {@link Component#componentWillReceiveProps()}. Invoked
+     * before this mounted component receives new props.
      *
      * @inheritdoc
      * @param {Object} nextProps - New props component will receive.
@@ -74,12 +84,14 @@ export class AbstractWelcomePage extends Component {
     }
 
     /**
-     * This method is executed when method will be unmounted from DOM.
+     * Implements React's {@link Component#componentWillUnmount()}. Invoked
+     * immediately before this component is unmounted and destroyed.
      *
      * @inheritdoc
      */
     componentWillUnmount() {
         this._clearTimeouts();
+        this._mounted = false;
     }
 
     /**
@@ -130,7 +142,7 @@ export class AbstractWelcomePage extends Component {
      * otherwise, false.
      */
     _isJoinDisabled() {
-        return !isRoomValid(this.state.room);
+        return this.state.joining || !isRoomValid(this.state.room);
     }
 
     /**
@@ -144,7 +156,16 @@ export class AbstractWelcomePage extends Component {
         const room = this.state.room || this.state.generatedRoomname;
 
         if (room) {
-            this.props.dispatch(appNavigate(room));
+            this.setState({ joining: true });
+
+            // By the time the Promise of appNavigate settles, this component
+            // may have already been unmounted.
+            const onAppNavigateSettled = () => {
+                this._mounted && this.setState({ joining: false });
+            };
+
+            this.props.dispatch(appNavigate(room))
+                .then(onAppNavigateSettled, onAppNavigateSettled);
         }
     }
 
@@ -158,18 +179,6 @@ export class AbstractWelcomePage extends Component {
      */
     _onRoomChange(value) {
         this.setState({ room: value });
-    }
-
-    /**
-     * Renders a local video if any.
-     *
-     * @protected
-     * @returns {(ReactElement|null)}
-     */
-    _renderLocalVideo() {
-        return (
-            <VideoTrack videoTrack = { this.props._localVideoTrack } />
-        );
     }
 
     /**
@@ -196,24 +205,17 @@ export class AbstractWelcomePage extends Component {
 }
 
 /**
- * Selects local video track from tracks in state, local participant and room
- * and maps them to component props. It seems it's not possible to 'connect'
- * base component and then extend from it. So we export this function in order
- * to be used in child classes for 'connect'.
+ * Maps (parts of) the redux state to the React {@code Component} props of
+ * {@code AbstractWelcomePage}.
  *
- * @param {Object} state - Redux state.
+ * @param {Object} state - The redux state.
  * @protected
  * @returns {{
- *     _localVideoTrack: (Track|undefined),
  *     _room: string
  * }}
  */
 export function _mapStateToProps(state) {
-    const conference = state['features/base/conference'];
-    const tracks = state['features/base/tracks'];
-
     return {
-        _localVideoTrack: getLocalVideoTrack(tracks),
-        _room: conference.room
+        _room: state['features/base/conference'].room
     };
 }
