@@ -61,6 +61,7 @@ public class JitsiMeetView extends FrameLayout {
             ReactApplicationContext reactContext) {
         return Arrays.<NativeModule>asList(
             new AndroidSettingsModule(reactContext),
+            new AppInfoModule(reactContext),
             new AudioModeModule(reactContext),
             new ExternalAPIModule(reactContext),
             new ProximityModule(reactContext)
@@ -83,10 +84,10 @@ public class JitsiMeetView extends FrameLayout {
     /**
      * Internal method to initialize the React Native instance manager. We
      * create a single instance in order to load the JavaScript bundle a single
-     * time. All <tt>ReactRootView</tt> instances will be tied to the one and
-     * only <tt>ReactInstanceManager</tt>.
+     * time. All {@code ReactRootView} instances will be tied to the one and
+     * only {@code ReactInstanceManager}.
      *
-     * @param application - <tt>Application</tt> instance which is running.
+     * @param application {@code Application} instance which is running.
      */
     private static void initReactInstanceManager(Application application) {
         reactInstanceManager
@@ -117,7 +118,7 @@ public class JitsiMeetView extends FrameLayout {
      * Loads a specific URL {@code String} in all existing
      * {@code JitsiMeetView}s.
      *
-     * @param urlString - The URL {@code String} to load in all existing
+     * @param urlString he URL {@code String} to load in all existing
      * {@code JitsiMeetView}s.
      * @return If the specified {@code urlString} was submitted for loading in
      * at least one {@code JitsiMeetView}, then {@code true}; otherwise,
@@ -139,11 +140,11 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onBackPressed</tt> so we can do the required internal
+     * {@code Activity.onBackPressed} so we can do the required internal
      * processing.
      *
-     * @return - true if the back-press was processed, false otherwise. In case
-     * false is returned the application should call the parent's
+     * @return {@code true} if the back-press was processed; {@code false},
+     * otherwise. If {@code false}, the application should call the parent's
      * implementation.
      */
     public static boolean onBackPressed() {
@@ -157,10 +158,10 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onDestroy</tt> so we can do the required internal
+     * {@code Activity.onDestroy} so we can do the required internal
      * processing.
      *
-     * @param activity - <tt>Activity</tt> being destroyed.
+     * @param activity {@code Activity} being destroyed.
      */
     public static void onHostDestroy(Activity activity) {
         if (reactInstanceManager != null) {
@@ -170,9 +171,9 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onPause</tt> so we can do the required internal processing.
+     * {@code Activity.onPause} so we can do the required internal processing.
      *
-     * @param activity - <tt>Activity</tt> being paused.
+     * @param activity {@code Activity} being paused.
      */
     public static void onHostPause(Activity activity) {
         if (reactInstanceManager != null) {
@@ -182,9 +183,9 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onResume</tt> so we can do the required internal processing.
+     * {@code Activity.onResume} so we can do the required internal processing.
      *
-     * @param activity - <tt>Activity</tt> being resumed.
+     * @param activity {@code Activity} being resumed.
      */
     public static void onHostResume(Activity activity) {
         onHostResume(activity, new DefaultHardwareBackBtnHandlerImpl(activity));
@@ -192,12 +193,11 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onResume</tt> so we can do the required internal processing.
+     * {@code Activity.onResume} so we can do the required internal processing.
      *
-     * @param activity - <tt>Activity</tt> being resumed.
-     * @param defaultBackButtonImpl - a <tt>DefaultHardwareBackBtnHandler</tt>
-     * to handle invoking the back button if no <tt>JitsiMeetView</tt> handles
-     * it.
+     * @param activity {@code Activity} being resumed.
+     * @param defaultBackButtonImpl a {@code DefaultHardwareBackBtnHandler} to
+     * handle invoking the back button if no {@code JitsiMeetView} handles it.
      */
     public static void onHostResume(
             Activity activity,
@@ -209,12 +209,12 @@ public class JitsiMeetView extends FrameLayout {
 
     /**
      * Activity lifecycle method which should be called from
-     * <tt>Activity.onNewIntent</tt> so we can do the required internal
+     * {@code Activity.onNewIntent} so we can do the required internal
      * processing. Note that this is only needed if the activity's "launchMode"
      * was set to "singleTask". This is required for deep linking to work once
      * the application is already running.
      *
-     * @param intent - <tt>Intent</tt> instance which was received.
+     * @param intent {@code Intent} instance which was received.
      */
     public static void onNewIntent(Intent intent) {
         // XXX At least twice we received bug reports about malfunctioning
@@ -234,6 +234,13 @@ public class JitsiMeetView extends FrameLayout {
             reactInstanceManager.onNewIntent(intent);
         }
     }
+
+    /**
+     * The default base {@code URL} used to join a conference when a partial URL
+     * (e.g. a room name only) is specified to {@link #loadURLString(String)} or
+     * {@link #loadURLObject(Bundle)}.
+     */
+    private URL defaultURL;
 
     /**
      * The unique identifier of this {@code JitsiMeetView} within the process
@@ -291,6 +298,19 @@ public class JitsiMeetView extends FrameLayout {
     }
 
     /**
+     * Gets the default base {@code URL} used to join a conference when a
+     * partial URL (e.g. a room name only) is specified to
+     * {@link #loadURLString(String)} or {@link #loadURLObject(Bundle)}. If not
+     * set or if set to {@code null}, the default built in JavaScript is used:
+     * {@link https://meet.jit.si}
+     *
+     * @return The default base {@code URL} or {@code null}.
+     */
+    public URL getDefaultURL() {
+        return defaultURL;
+    }
+
+    /**
      * Gets the {@link JitsiMeetViewListener} set on this {@code JitsiMeetView}.
      *
      * @return The {@code JitsiMeetViewListener} set on this
@@ -305,7 +325,8 @@ public class JitsiMeetView extends FrameLayout {
      * page is rendered when this {@code JitsiMeetView} is not at a URL
      * identifying a Jitsi Meet conference/room.
      *
-     * @return {@true} if the Welcome page is enabled; otherwise, {@code false}.
+     * @return {@code true} if the Welcome page is enabled; otherwise,
+     * {@code false}.
      */
     public boolean getWelcomePageEnabled() {
         return welcomePageEnabled;
@@ -316,7 +337,7 @@ public class JitsiMeetView extends FrameLayout {
      * the specified {@code URL} is {@code null} and the Welcome page is
      * enabled, the Welcome page is displayed instead.
      *
-     * @param url - The {@code URL} to load which may identify a conference to
+     * @param url The {@code URL} to load which may identify a conference to
      * join.
      */
     public void loadURL(@Nullable URL url) {
@@ -331,12 +352,15 @@ public class JitsiMeetView extends FrameLayout {
      * clients/consumers. If the specified URL is {@code null} and the Welcome
      * page is enabled, the Welcome page is displayed instead.
      *
-     * @param urlObject - The URL to load which may identify a conference to
-     * join.
+     * @param urlObject The URL to load which may identify a conference to join.
      */
     public void loadURLObject(@Nullable Bundle urlObject) {
         Bundle props = new Bundle();
 
+        // defaultURL
+        if (defaultURL != null) {
+            props.putString("defaultURL", defaultURL.toString());
+        }
         // externalAPIScope
         props.putString("externalAPIScope", externalAPIScope);
         // url
@@ -361,7 +385,7 @@ public class JitsiMeetView extends FrameLayout {
      * join. If the specified URL {@code String} is {@code null} and the Welcome
      * page is enabled, the Welcome page is displayed instead.
      *
-     * @param urlString - The URL {@code String} to load which may identify a
+     * @param urlString The URL {@code String} to load which may identify a
      * conference to join.
      */
     public void loadURLString(@Nullable String urlString) {
@@ -377,10 +401,23 @@ public class JitsiMeetView extends FrameLayout {
     }
 
     /**
+     * Sets the default base {@code URL} used to join a conference when a
+     * partial URL (e.g. a room name only) is specified to
+     * {@link #loadURLString(String)} or {@link #loadURLObject(Bundle)}. Must be
+     * called before {@link #loadURL(URL)} for it to take effect.
+     *
+     * @param defaultURL The {@code URL} to be set as the default base URL.
+     * @see #getDefaultURL()
+     */
+    public void setDefaultURL(URL defaultURL) {
+        this.defaultURL = defaultURL;
+    }
+
+    /**
      * Sets a specific {@link JitsiMeetViewListener} on this
      * {@code JitsiMeetView}.
      *
-     * @param listener - The {@code JitsiMeetViewListener} to set on this
+     * @param listener The {@code JitsiMeetViewListener} to set on this
      * {@code JitsiMeetView}.
      */
     public void setListener(JitsiMeetViewListener listener) {

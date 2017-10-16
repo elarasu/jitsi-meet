@@ -30,14 +30,14 @@ import com.facebook.react.modules.core.DefaultHardwareBackBtnHandler;
 
 /**
  * Base Activity for applications integrating Jitsi Meet at a higher level. It
- * contains all the required wiring between the <tt>JKConferenceView</tt> and
+ * contains all the required wiring between the {@code JKConferenceView} and
  * the Activity lifecycle methods already implemented.
  *
- * In this activity we use a single <tt>JKConferenceView</tt> instance. This
+ * In this activity we use a single {@code JKConferenceView} instance. This
  * instance gives us access to a view which displays the welcome page and the
  * conference itself. All lifetime methods associated with this Activity are
  * hooked to the React Native subsystem via proxy calls through the
- * <tt>JKConferenceView</tt> static methods.
+ * {@code JKConferenceView} static methods.
  */
 public class JitsiMeetActivity
     extends AppCompatActivity {
@@ -50,10 +50,17 @@ public class JitsiMeetActivity
         = (int) (Math.random() * Short.MAX_VALUE);
 
     /**
-     * The default behavior of this <tt>JitsiMeetActivity</tt> upon invoking the
+     * The default behavior of this {@code JitsiMeetActivity} upon invoking the
      * back button if {@link #view} does not handle the invocation.
      */
     private DefaultHardwareBackBtnHandler defaultBackButtonImpl;
+
+    /**
+     * The default base {@code URL} used to join a conference when a partial URL
+     * (e.g. a room name only) is specified. The value is used only while
+     * {@link #view} equals {@code null}.
+     */
+    private URL defaultURL;
 
     /**
      * Instance of the {@link JitsiMeetView} which this activity will display.
@@ -76,7 +83,15 @@ public class JitsiMeetActivity
 
     /**
      *
-     * @see JitsiMeetView#getWelcomePageEnabled
+     * @see JitsiMeetView#getDefaultURL()
+     */
+    public URL getDefaultURL() {
+        return view == null ? defaultURL : view.getDefaultURL();
+    }
+
+    /**
+     *
+     * @see JitsiMeetView#getWelcomePageEnabled()
      */
     public boolean getWelcomePageEnabled() {
         return view == null ? welcomePageEnabled : view.getWelcomePageEnabled();
@@ -103,10 +118,11 @@ public class JitsiMeetActivity
     protected JitsiMeetView initializeView() {
         JitsiMeetView view = new JitsiMeetView(this);
 
-        // In order to have the desired effect
-        // JitsiMeetView#setWelcomePageEnabled(boolean) must be invoked before
-        // JitsiMeetView#loadURL(URL).
+        // XXX Before calling JitsiMeetView#loadURL, make sure to call whatever
+        // is documented to need such an order in order to take effect:
+        view.setDefaultURL(defaultURL);
         view.setWelcomePageEnabled(welcomePageEnabled);
+
         view.loadURL(null);
 
         return view;
@@ -116,15 +132,12 @@ public class JitsiMeetActivity
      * Loads the given URL and displays the conference. If the specified URL is
      * null, the welcome page is displayed instead.
      *
-     * @param url - The conference URL.
+     * @param url The conference URL.
      */
     public void loadURL(@Nullable URL url) {
         view.loadURL(url);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void onActivityResult(
             int requestCode,
@@ -138,9 +151,6 @@ public class JitsiMeetActivity
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onBackPressed() {
         if (!JitsiMeetView.onBackPressed()) {
@@ -158,9 +168,6 @@ public class JitsiMeetActivity
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -180,9 +187,6 @@ public class JitsiMeetActivity
         initializeContentView();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -195,17 +199,11 @@ public class JitsiMeetActivity
         JitsiMeetView.onHostDestroy(this);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onNewIntent(Intent intent) {
         JitsiMeetView.onNewIntent(intent);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void onPause() {
         super.onPause();
@@ -214,9 +212,6 @@ public class JitsiMeetActivity
         defaultBackButtonImpl = null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void onResume() {
         super.onResume();
@@ -227,7 +222,19 @@ public class JitsiMeetActivity
 
     /**
      *
-     * @see JitsiMeetView#setWelcomePageEnabled
+     * @see JitsiMeetView#setDefaultURL(URL)
+     */
+    public void setDefaultURL(URL defaultURL) {
+        if (view == null) {
+            this.defaultURL = defaultURL;
+        } else {
+            view.setDefaultURL(defaultURL);
+        }
+    }
+
+    /**
+     *
+     * @see JitsiMeetView#setWelcomePageEnabled(boolean)
      */
     public void setWelcomePageEnabled(boolean welcomePageEnabled) {
         if (view == null) {

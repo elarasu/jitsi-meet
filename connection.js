@@ -8,11 +8,11 @@ import {
     connectionFailed
 } from './react/features/base/connection';
 import {
-    isFatalJitsiConnectionError
+    isFatalJitsiConnectionError,
+    JitsiConnectionErrors,
+    JitsiConnectionEvents
 } from './react/features/base/lib-jitsi-meet';
 
-const ConnectionEvents = JitsiMeetJS.events.connection;
-const ConnectionErrors = JitsiMeetJS.errors.connection;
 const logger = require("jitsi-meet-logger").getLogger(__filename);
 
 /**
@@ -62,7 +62,7 @@ function checkForAttachParametersAndConnect(id, password, connection) {
  */
 function connect(id, password, roomName) {
     const connectionConfig = Object.assign({}, config);
-    const { issuer, jwt } = APP.store.getState()['features/jwt'];
+    const { issuer, jwt } = APP.store.getState()['features/base/jwt'];
 
     connectionConfig.bosh += '?room=' + roomName;
 
@@ -74,31 +74,32 @@ function connect(id, password, roomName) {
 
     return new Promise(function (resolve, reject) {
         connection.addEventListener(
-            ConnectionEvents.CONNECTION_ESTABLISHED,
+            JitsiConnectionEvents.CONNECTION_ESTABLISHED,
             handleConnectionEstablished);
         connection.addEventListener(
-            ConnectionEvents.CONNECTION_FAILED,
+            JitsiConnectionEvents.CONNECTION_FAILED,
             handleConnectionFailed);
         connection.addEventListener(
-            ConnectionEvents.CONNECTION_FAILED,
+            JitsiConnectionEvents.CONNECTION_FAILED,
             connectionFailedHandler);
 
-        function connectionFailedHandler(error, errMsg) {
-            APP.store.dispatch(connectionFailed(connection, error, errMsg));
+        function connectionFailedHandler(error, message, credentials) {
+            APP.store.dispatch(
+                connectionFailed(connection, error, message, credentials));
 
             if (isFatalJitsiConnectionError(error)) {
                 connection.removeEventListener(
-                    ConnectionEvents.CONNECTION_FAILED,
+                    JitsiConnectionEvents.CONNECTION_FAILED,
                     connectionFailedHandler);
             }
         }
 
         function unsubscribe() {
             connection.removeEventListener(
-                ConnectionEvents.CONNECTION_ESTABLISHED,
+                JitsiConnectionEvents.CONNECTION_ESTABLISHED,
                 handleConnectionEstablished);
             connection.removeEventListener(
-                ConnectionEvents.CONNECTION_FAILED,
+                JitsiConnectionEvents.CONNECTION_FAILED,
                 handleConnectionFailed);
         }
 
@@ -146,9 +147,9 @@ export function openConnection({id, password, retry, roomName}) {
 
     return connect(id, password, roomName).catch(err => {
         if (retry) {
-            const { issuer, jwt } = APP.store.getState()['features/jwt'];
+            const { issuer, jwt } = APP.store.getState()['features/base/jwt'];
 
-            if (err === ConnectionErrors.PASSWORD_REQUIRED
+            if (err === JitsiConnectionErrors.PASSWORD_REQUIRED
                     && (!jwt || issuer === 'anonymous')) {
                 return AuthHandler.requestAuth(roomName, connect);
             }
