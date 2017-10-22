@@ -3,7 +3,7 @@
 const process = require('process');
 const webpack = require('webpack');
 
-const aui_css = `${__dirname}/node_modules/@atlassian/aui/dist/aui/css/`;
+const auiCSS = `${__dirname}/node_modules/@atlassian/aui/dist/aui/css/`;
 
 /**
  * The URL of the Jitsi Meet deployment to be proxy to in the context of
@@ -15,6 +15,8 @@ const devServerProxyTarget
 const minimize
     = process.argv.indexOf('-p') !== -1
         || process.argv.indexOf('--optimize-minimize') !== -1;
+
+// eslint-disable-next-line camelcase
 const node_modules = `${__dirname}/node_modules/`;
 const plugins = [
     new webpack.LoaderOptionsPlugin({
@@ -63,7 +65,7 @@ const config = {
             // Transpile ES2015 (aka ES6) to ES5. Accept the JSX syntax by React
             // as well.
 
-            exclude: node_modules,
+            exclude: node_modules, // eslint-disable-line camelcase
             loader: 'babel-loader',
             options: {
                 // XXX The require.resolve bellow solves failures to locate the
@@ -113,10 +115,10 @@ const config = {
             // Emit the static assets of AUI such as images that are referenced
             // by CSS into the output path.
 
-            include: aui_css,
+            include: auiCSS,
             loader: 'file-loader',
             options: {
-                context: aui_css,
+                context: auiCSS,
                 name: '[path][name].[ext]'
             },
             test: /\.(gif|png|svg)$/
@@ -209,7 +211,7 @@ function devServerProxyBypass({ path }) {
 
     const configs = module.exports;
 
-    /* eslint-disable indent */
+    /* eslint-disable array-callback-return, indent */
 
     if ((Array.isArray(configs) ? configs : Array(configs)).some(c => {
                 if (path.startsWith(c.output.publicPath)) {
@@ -221,6 +223,7 @@ function devServerProxyBypass({ path }) {
                             const name = `${e}.min.js`;
 
                             if (path.indexOf(name) !== -1) {
+                                // eslint-disable-next-line no-param-reassign
                                 path = path.replace(name, `${e}.js`);
 
                                 return true;
@@ -234,5 +237,5 @@ function devServerProxyBypass({ path }) {
         return path;
     }
 
-    /* eslint-enable indent */
+    /* eslint-enable array-callback-return, indent */
 }
